@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
@@ -95,7 +93,7 @@ function App() {
   }
 
   const exportPDF = () => {
-    // Create the complete HTML document for printing
+    // Create the complete HTML document for printing with preserved styling
     const printHTML = `
 <!DOCTYPE html>
 <html lang="en">
@@ -106,7 +104,7 @@ function App() {
     <style>
         @page {
             size: A4;
-            margin: 1in;
+            margin: 0.5in;
         }
         
         * {
@@ -116,130 +114,208 @@ function App() {
         }
         
         body {
-            font-family: Georgia, 'Times New Roman', serif;
-            line-height: 1.6;
-            color: #333;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            line-height: 1.7;
+            color: #2c3e50;
             background: white;
-            font-size: 12pt;
+            padding: 2rem;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
-        .book-title {
-            text-align: center;
-            font-size: 24pt;
-            font-weight: bold;
-            margin-bottom: 2em;
-            padding-bottom: 0.5em;
-            border-bottom: 2px solid #333;
-            page-break-after: avoid;
+        .container {
+            max-width: none;
+            margin: 0;
+            background: white;
+            border-radius: 20px;
+            overflow: visible;
         }
         
-        .chapter {
-            margin-bottom: 2em;
-            page-break-inside: avoid;
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 3rem 2rem 2rem;
+            border-radius: 20px 20px 0 0;
+            margin-bottom: 0;
+        }
+        
+        .chapter-number {
+            font-size: 1rem;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0.8;
+            margin-bottom: 1rem;
         }
         
         .chapter-title {
-            font-size: 18pt;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 1em;
-            padding-left: 0.5em;
-            border-left: 4px solid #007acc;
-            page-break-after: avoid;
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
         }
         
-        .chapter-content {
-            color: #444;
-        }
-        
-        .chapter-content h1,
-        .chapter-content h2,
-        .chapter-content h3 {
-            page-break-after: avoid;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-        }
-        
-        .chapter-content p {
-            margin-bottom: 1em;
-            text-align: justify;
-        }
-        
-        .chapter-content ul,
-        .chapter-content ol {
-            margin-bottom: 1em;
-            padding-left: 2em;
-        }
-        
-        .chapter-content li {
-            margin-bottom: 0.5em;
-        }
-        
-        .chapter-content code {
-            background: #f5f5f5;
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .chapter-content pre {
-            background: #f5f5f5;
-            padding: 1em;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin: 1em 0;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .chapter-content blockquote {
-            border-left: 4px solid #ddd;
-            padding-left: 1em;
-            margin: 1em 0;
+        .chapter-subtitle {
+            font-size: 1.2rem;
+            font-weight: 300;
+            opacity: 0.9;
             font-style: italic;
         }
         
-        /* Remove problematic CSS properties for PDF */
-        * {
-            background-image: none !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-            transform: none !important;
-            animation: none !important;
-            transition: none !important;
+        .content {
+            padding: 3rem 2rem;
         }
         
-        /* Simple background colors only */
-        .highlight-box,
-        .example-box,
-        .warning-box,
+        .section {
+            margin-bottom: 2.5rem;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e74c3c;
+            page-break-after: avoid;
+        }
+        
+        p {
+            margin-bottom: 1.2rem;
+            text-align: justify;
+            color: #34495e;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-left: 4px solid #3498db;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            page-break-inside: avoid;
+        }
+        
+        .highlight-box p {
+            margin-left: 0;
+            font-style: italic;
+            color: #2c3e50;
+        }
+        
+        .example-box {
+            background: #fff8e7;
+            border: 2px solid #f39c12;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            page-break-inside: avoid;
+        }
+        
+        .example-title {
+            font-weight: 600;
+            color: #d68910;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 1rem 0;
+            overflow-x: visible;
+            white-space: pre-wrap;
+            page-break-inside: avoid;
+        }
+        
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        li {
+            margin-bottom: 0.8rem;
+            padding-left: 2rem;
+            position: relative;
+            color: #34495e;
+        }
+        
+        li::before {
+            content: '▶';
+            position: absolute;
+            left: 0;
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .warning-box {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border-left: 4px solid #e74c3c;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+            page-break-inside: avoid;
+        }
+        
+        .warning-title {
+            font-weight: 600;
+            color: #c62828;
+            margin-bottom: 0.8rem;
+        }
+        
         .exercise-box {
-            background: #f8f9fa !important;
-            border: 1px solid #dee2e6 !important;
-            padding: 1em !important;
-            margin: 1em 0 !important;
-            border-radius: 5px !important;
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2.5rem 0;
+            page-break-inside: avoid;
+        }
+        
+        .exercise-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 2rem;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+            font-style: italic;
+            color: #6c757d;
+            margin-top: 2rem;
         }
         
         @media print {
-            body { -webkit-print-color-adjust: exact; }
-            .chapter { page-break-inside: avoid; }
-            .chapter-title { page-break-after: avoid; }
+            body { 
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .section { page-break-inside: avoid; }
+            .section-title { page-break-after: avoid; }
+            .highlight-box,
+            .example-box,
+            .warning-box,
+            .exercise-box,
+            .code-block { page-break-inside: avoid; }
         }
     </style>
 </head>
 <body>
-    <h1 class="book-title">${book.title}</h1>
-    ${book.chapters.map(chapter => `
-    <div class="chapter">
-        <h2 class="chapter-title">${chapter.title}</h2>
-        <div class="chapter-content">${chapter.content}</div>
-    </div>
-    `).join('')}
+    ${book.chapters.map(chapter => chapter.content).join('')}
 </body>
 </html>`
     
     // Open the content in a new window and trigger print
-    const printWindow = window.open('', '_blank')
+    const printWindow = window.open('', '_blank', 'width=800,height=600')
     printWindow.document.write(printHTML)
     printWindow.document.close()
     
@@ -247,7 +323,7 @@ function App() {
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.print()
-      }, 500)
+      }, 1000)
     }
   }
 
