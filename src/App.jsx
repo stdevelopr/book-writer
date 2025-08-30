@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
+import StyleManager from './components/StyleManager'
 import './App.css'
 
 function App() {
   const [book, setBook] = useState({
     title: 'Untitled Book',
-    chapters: [{ id: 1, title: 'Chapter 1', content: '<p>Start writing your book here...</p>' }]
+    chapters: [{ id: 1, title: 'Chapter 1', content: '<p>Start writing your book here...</p>' }],
+    styles: {}
   })
   const [currentChapter, setCurrentChapter] = useState(1)
   const [lastSaved, setLastSaved] = useState(null)
+  const [showStyleManager, setShowStyleManager] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('bookData')
@@ -92,8 +95,25 @@ function App() {
     URL.revokeObjectURL(url)
   }
 
+  const generateCustomCSS = () => {
+    const defaultStyles = {
+      'chapter-title': 'font-size: 2.5rem; font-weight: 700; color: #2c3e50; text-align: center; margin: 2rem 0;',
+      'section-title': 'font-size: 1.8rem; font-weight: 600; color: #34495e; margin: 1.5rem 0 1rem 0;',
+      'paragraph': 'font-size: 1rem; line-height: 1.7; color: #2c3e50; margin-bottom: 1.2rem;',
+      'highlight-box': 'background: linear-gradient(135deg, #fff3cd, #ffeaa7); border-left: 5px solid #f39c12; padding: 1.5rem; margin: 2rem 0;',
+      'code-block': 'background: #2c3e50; color: #ecf0f1; padding: 1.5rem; border-radius: 8px; font-family: monospace;',
+      'quote': 'font-style: italic; border-left: 4px solid #ddd; padding-left: 2rem; margin: 2rem 0;'
+    }
+    
+    const customStyles = { ...defaultStyles, ...book.styles }
+    
+    return Object.entries(customStyles)
+      .map(([className, css]) => `.${className} { ${css} }`)
+      .join('\n        ')
+  }
+
   const exportPDF = () => {
-    // Create the complete HTML document for printing with preserved styling
+    // Create the complete HTML document for printing with custom styles
     const printHTML = `
 <!DOCTYPE html>
 <html lang="en">
@@ -123,113 +143,17 @@ function App() {
             print-color-adjust: exact;
         }
         
-        .container {
-            max-width: none;
-            margin: 0;
-            background: white;
-            border-radius: 20px;
-            overflow: visible;
-        }
+        /* Custom styles from Style Manager */
+        ${generateCustomCSS()}
         
-        .header {
-            background: linear-gradient(45deg, #2c3e50, #34495e);
-            color: white;
-            padding: 3rem 2rem 2rem;
-            border-radius: 20px 20px 0 0;
-            margin-bottom: 0;
-        }
-        
-        .chapter-number {
-            font-size: 1rem;
-            font-weight: 300;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            opacity: 0.8;
-            margin-bottom: 1rem;
-        }
-        
-        .chapter-title {
+        /* Default styles for elements not customized */
+        .book-title {
+            text-align: center;
             font-size: 2.5rem;
-            font-weight: 700;
-            line-height: 1.2;
-            margin-bottom: 1rem;
-        }
-        
-        .chapter-subtitle {
-            font-size: 1.2rem;
-            font-weight: 300;
-            opacity: 0.9;
-            font-style: italic;
-        }
-        
-        .content {
-            padding: 3rem 2rem;
-        }
-        
-        .section {
-            margin-bottom: 2.5rem;
-            page-break-inside: avoid;
-        }
-        
-        .section-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #e74c3c;
-            page-break-after: avoid;
-        }
-        
-        p {
-            margin-bottom: 1.2rem;
-            text-align: justify;
-            color: #34495e;
-        }
-        
-        .highlight-box {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-left: 4px solid #3498db;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            page-break-inside: avoid;
-        }
-        
-        .highlight-box p {
-            margin-left: 0;
-            font-style: italic;
-            color: #2c3e50;
-        }
-        
-        .example-box {
-            background: #fff8e7;
-            border: 2px solid #f39c12;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            page-break-inside: avoid;
-        }
-        
-        .example-title {
-            font-weight: 600;
-            color: #d68910;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-        
-        .code-block {
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 1.5rem;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            margin: 1rem 0;
-            overflow-x: visible;
-            white-space: pre-wrap;
-            page-break-inside: avoid;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid #333;
         }
         
         ul {
@@ -252,65 +176,23 @@ function App() {
             font-weight: bold;
         }
         
-        .warning-box {
-            background: linear-gradient(135deg, #ffebee, #ffcdd2);
-            border-left: 4px solid #e74c3c;
-            padding: 1.5rem;
-            margin: 2rem 0;
-            border-radius: 0 8px 8px 0;
-            page-break-inside: avoid;
-        }
-        
-        .warning-title {
-            font-weight: 600;
-            color: #c62828;
-            margin-bottom: 0.8rem;
-        }
-        
-        .exercise-box {
-            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
-            border: 2px solid #4caf50;
-            border-radius: 12px;
-            padding: 2rem;
-            margin: 2.5rem 0;
-            page-break-inside: avoid;
-        }
-        
-        .exercise-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2e7d32;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        
-        .footer {
-            background: #f8f9fa;
-            padding: 2rem;
-            text-align: center;
-            border-top: 1px solid #dee2e6;
-            font-style: italic;
-            color: #6c757d;
-            margin-top: 2rem;
-        }
-        
         @media print {
             body { 
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            .section { page-break-inside: avoid; }
-            .section-title { page-break-after: avoid; }
-            .highlight-box,
-            .example-box,
-            .warning-box,
-            .exercise-box,
-            .code-block { page-break-inside: avoid; }
+            * { page-break-inside: avoid; }
         }
     </style>
 </head>
 <body>
-    ${book.chapters.map(chapter => chapter.content).join('')}
+    <h1 class="book-title">${book.title}</h1>
+    ${book.chapters.map(chapter => `
+    <div class="chapter">
+        <h1 class="chapter-title">${chapter.title}</h1>
+        <div class="chapter-content">${chapter.content}</div>
+    </div>
+    `).join('')}
 </body>
 </html>`
     
@@ -337,6 +219,7 @@ function App() {
         onSave={saveBook}
         onExport={exportBook}
         onExportPDF={exportPDF}
+        onOpenStyles={() => setShowStyleManager(true)}
       />
       
       <div className="flex flex-1 overflow-hidden">
@@ -352,12 +235,21 @@ function App() {
           chapter={getCurrentChapter()}
           onTitleChange={updateChapterTitle}
           onContentChange={updateChapterContent}
+          styles={book.styles}
         />
       </div>
 
       <footer className="flex justify-between px-8 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
         <span>Last saved: {lastSaved || 'Never'}</span>
       </footer>
+
+      {showStyleManager && (
+        <StyleManager
+          styles={book.styles}
+          onStylesChange={(newStyles) => setBook({ ...book, styles: newStyles })}
+          onClose={() => setShowStyleManager(false)}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import Button from './Button';
 import Input from './Input';
 
-const Header = ({ bookTitle, onTitleChange, onSave, onExport, onExportPDF }) => {
+const Header = ({ bookTitle, onTitleChange, onSave, onExport, onExportPDF, onOpenStyles }) => {
   return (
     <header className="flex justify-between items-center px-8 py-4 bg-gray-50 border-b border-gray-200">
       <h1 className="text-2xl font-bold text-gray-800">Book Writer</h1>
@@ -12,6 +12,9 @@ const Header = ({ bookTitle, onTitleChange, onSave, onExport, onExportPDF }) => 
           placeholder="Book title"
           className="min-w-[200px]"
         />
+        <Button onClick={onOpenStyles} variant="secondary">
+          🎨 Styles
+        </Button>
         <Button onClick={onSave}>
           Save
         </Button>

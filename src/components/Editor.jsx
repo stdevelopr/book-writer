@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import WysiwygEditor from './WysiwygEditor';
 import Input from './Input';
 
-const Editor = ({ chapter, onTitleChange, onContentChange }) => {
+const Editor = ({ chapter, onTitleChange, onContentChange, styles }) => {
   const [isPreview, setIsPreview] = useState(false);
+  const [viewMode, setViewMode] = useState('wysiwyg'); // 'wysiwyg' or 'html'
   const wordCount = chapter?.content.replace(/<[^>]*>/g, '').split(/\s+/).filter(word => word.length > 0).length || 0;
+  
+  const generateStyleCSS = () => {
+    if (!styles) return '';
+    return Object.entries(styles)
+      .map(([className, style]) => `.${className} { ${style.css} }`)
+      .join('\n');
+  };
+
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
@@ -18,14 +28,24 @@ const Editor = ({ chapter, onTitleChange, onContentChange }) => {
         />
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsPreview(false)}
+            onClick={() => { setIsPreview(false); setViewMode('wysiwyg'); }}
             className={`px-3 py-1 rounded text-sm font-medium ${
-              !isPreview 
+              !isPreview && viewMode === 'wysiwyg'
                 ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                 : 'text-gray-600 hover:text-gray-800'
             }`}
           >
-            Edit
+            ✏️ Write
+          </button>
+          <button
+            onClick={() => { setIsPreview(false); setViewMode('html'); }}
+            className={`px-3 py-1 rounded text-sm font-medium ${
+              !isPreview && viewMode === 'html'
+                ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            📝 HTML
           </button>
           <button
             onClick={() => setIsPreview(true)}
@@ -35,7 +55,7 @@ const Editor = ({ chapter, onTitleChange, onContentChange }) => {
                 : 'text-gray-600 hover:text-gray-800'
             }`}
           >
-            Preview
+            👁️ Preview
           </button>
         </div>
       </div>
@@ -43,11 +63,20 @@ const Editor = ({ chapter, onTitleChange, onContentChange }) => {
       <div className="flex-1 overflow-hidden">
         {isPreview ? (
           <div className="h-full overflow-y-auto p-8 bg-white">
+            <style>
+              {generateStyleCSS()}
+            </style>
             <div 
               className="prose prose-lg max-w-none"
               dangerouslySetInnerHTML={{ __html: chapter?.content || '' }}
             />
           </div>
+        ) : viewMode === 'wysiwyg' ? (
+          <WysiwygEditor
+            content={chapter?.content || ''}
+            onChange={onContentChange}
+            styles={styles}
+          />
         ) : (
           <MonacoEditor
             height="100%"
