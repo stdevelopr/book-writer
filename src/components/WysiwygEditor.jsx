@@ -1,54 +1,212 @@
 import { useRef, useEffect } from 'react';
-import ReactQuill from 'react-quill-new';
-import 'react-quill-new/dist/quill.snow.css';
 
 const WysiwygEditor = ({ content, onChange, styles }) => {
-  const quillRef = useRef(null);
+  const editorRef = useRef(null);
 
   const generateStyleCSS = () => {
-    if (!styles) return '';
-    return Object.entries(styles)
-      .map(([className, style]) => `.ql-editor .${className} { ${style.css} }`)
-      .join('\n');
+    // Simple test styles that work well with spans
+    return `
+      span.chapter-title {
+        font-size: 40px !important;
+        color: red !important;
+        background: yellow !important;
+        padding: 10px !important;
+        font-weight: bold !important;
+        display: inline-block !important;
+        border: 3px solid blue !important;
+      }
+      span.section-title {
+        font-size: 30px !important;
+        color: blue !important;
+        background: lightblue !important;
+        padding: 8px !important;
+        font-weight: bold !important;
+        display: inline-block !important;
+      }
+      span.highlight-box {
+        background: orange !important;
+        color: white !important;
+        padding: 8px !important;
+        font-weight: bold !important;
+        display: inline-block !important;
+      }
+    `;
   };
 
-  // Custom function for applying styles
-  const applyCustomStyle = (styleClass) => {
-    const editor = quillRef.current?.getEditor();
-    if (!editor) return;
 
-    const selection = editor.getSelection();
-    if (!selection || selection.length === 0) {
+  // Function to apply or toggle styles on selected text
+  const applyCustomStyle = (styleClass) => {
+    console.log('Applying/toggling style:', styleClass);
+    
+    const editor = editorRef.current;
+    if (!editor) {
+      console.log('No editor ref');
+      return;
+    }
+
+    const selection = window.getSelection();
+    
+    // Check if we have a valid selection
+    if (selection.rangeCount === 0 || selection.isCollapsed) {
       alert('Please select some text first to apply the style.');
       return;
     }
 
-    // Get the selected text and wrap it with a span
-    const selectedText = editor.getText(selection.index, selection.length);
+    const range = selection.getRangeAt(0);
     
-    // Delete the selected text
-    editor.deleteText(selection.index, selection.length);
-    
-    // Insert the text wrapped in a span with the custom class
-    const htmlContent = `<span class="${styleClass}">${selectedText}</span>`;
-    editor.clipboard.dangerouslyPasteHTML(selection.index, htmlContent);
-    
-    // Set selection after the inserted content
-    editor.setSelection(selection.index + selectedText.length);
+    // Make sure the selection is within our editor
+    if (!editor.contains(range.commonAncestorContainer)) {
+      alert('Please select text within the editor.');
+      return;
+    }
+
+    try {
+      // Check if the selection is entirely within a span with this style class
+      const commonAncestor = range.commonAncestorContainer;
+      let parentSpan = null;
+      
+      // If the common ancestor is a text node, get its parent
+      const elementToCheck = commonAncestor.nodeType === Node.TEXT_NODE 
+        ? commonAncestor.parentElement 
+        : commonAncestor;
+      
+      // Check if we're inside a span with the target class
+      if (elementToCheck && elementToCheck.tagName === 'SPAN' && elementToCheck.classList.contains(styleClass)) {
+        parentSpan = elementToCheck;
+      } else {
+        // Check if the selection is entirely within a span with this class
+        let currentElement = elementToCheck;
+        while (currentElement && currentElement !== editor) {
+          if (currentElement.tagName === 'SPAN' && currentElement.classList.contains(styleClass)) {
+            parentSpan = currentElement;
+            break;
+          }
+          currentElement = currentElement.parentElement;
+        }
+      }
+
+      if (parentSpan) {
+        // Remove the style - unwrap the span
+        console.log('Removing style from span');
+        const parent = parentSpan.parentNode;
+        
+        // Move all children of the span to replace the span
+        while (parentSpan.firstChild) {
+          parent.insertBefore(parentSpan.firstChild, parentSpan);
+        }
+        
+        // Remove the empty span
+        parent.removeChild(parentSpan);
+        
+        // Normalize the parent to merge adjacent text nodes
+        parent.normalize();
+        
+      } else {
+        // Apply the style - wrap in span
+        console.log('Applying style to selection');
+        
+        // Extract the selected content
+        const selectedContent = range.extractContents();
+        
+        // Create wrapper element
+        const wrapper = document.createElement('span');
+        wrapper.className = styleClass;
+        
+        // Append the selected content to the wrapper
+        wrapper.appendChild(selectedContent);
+        
+        // Insert the wrapper at the selection point
+        range.insertNode(wrapper);
+        
+        // Position cursor after the styled element
+        const newRange = document.createRange();
+        newRange.setStartAfter(wrapper);
+        newRange.collapse(true);
+        
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+      
+      // Focus back to editor
+      editor.focus();
+      
+      // Update the parent component with new content
+      if (onChange) {
+        onChange(editor.innerHTML);
+      }
+      
+      console.log('Style toggle completed successfully!');
+    } catch (error) {
+      console.error('Error toggling style:', error);
+      alert('Failed to toggle style. Please try again.');
+    }
   };
+
+  // Set initial content and update when content prop changes
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && content !== editor.innerHTML) {
+      // Preserve cursor position if possible
+      const selection = window.getSelection();
+      const wasEditorFocused = document.activeElement === editor;
+      let range = null;
+      
+      if (wasEditorFocused && selection.rangeCount > 0) {
+        range = selection.getRangeAt(0).cloneRange();
+      }
+      
+      editor.innerHTML = content || '';
+      
+      // Restore cursor position if we had one
+      if (wasEditorFocused && range) {
+        try {
+          selection.removeAllRanges();
+          selection.addRange(range);
+          editor.focus();
+        } catch (error) {
+          // If restoring selection fails, just focus the editor
+          editor.focus();
+        }
+      }
+    }
+  }, [content]);
 
   // Inject custom styles
   useEffect(() => {
-    const styleElement = document.getElementById('wysiwyg-styles');
-    if (styleElement) {
+    const injectStyles = () => {
+      const styleId = 'wysiwyg-styles';
+      let styleElement = document.getElementById(styleId);
+      
+      if (styleElement) {
+        styleElement.remove();
+      }
+      
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
       styleElement.innerHTML = generateStyleCSS();
-    } else {
-      const style = document.createElement('style');
-      style.id = 'wysiwyg-styles';
-      style.innerHTML = generateStyleCSS();
-      document.head.appendChild(style);
-    }
+      document.head.appendChild(styleElement);
+    };
+
+    // Inject styles immediately
+    injectStyles();
+    
+    // Also inject after a brief delay to ensure editor is ready
+    const timer = setTimeout(injectStyles, 100);
+    
+    return () => clearTimeout(timer);
   }, [styles]);
+
+  // Force style refresh when component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const styleElement = document.getElementById('wysiwyg-styles');
+      if (styleElement) {
+        styleElement.innerHTML = generateStyleCSS();
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -168,39 +326,88 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
         </button>
       </div>
 
-      {/* React Quill Editor */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <ReactQuill
-          ref={quillRef}
-          theme="snow"
-          value={content}
-          onChange={onChange}
-          style={{ height: '100%' }}
-          placeholder="Start writing your book here... Use the toolbar to format your text like in Apple Pages."
-          modules={{
-            toolbar: [
-              [{ 'header': [1, 2, 3, false] }],
-              ['bold', 'italic', 'underline', 'strike'],
-              [{ 'color': [] }, { 'background': [] }],
-              [{ 'font': [] }],
-              [{ 'size': ['small', false, 'large', 'huge'] }],
-              [{ 'align': [] }],
-              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-              ['blockquote', 'code-block'],
-              [{ 'indent': '-1'}, { 'indent': '+1' }],
-              [{ 'script': 'sub'}, { 'script': 'super' }],
-              ['link', 'image'],
-              ['clean']
-            ]
+      {/* Basic Rich Text Toolbar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '0.75rem 1rem',
+        backgroundColor: '#f8f9fa',
+        borderTop: '1px solid #e9ecef',
+        borderBottom: '1px solid #e9ecef',
+        flexWrap: 'wrap'
+      }}>
+        <button
+          onClick={() => document.execCommand('bold')}
+          style={{
+            padding: '0.375rem 0.5rem',
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
           }}
-          formats={[
-            'header', 'bold', 'italic', 'underline', 'strike',
-            'color', 'background', 'font', 'size', 'align',
-            'list', 'bullet', 'blockquote', 'code-block',
-            'indent', 'script', 'link', 'image'
-          ]}
-        />
+        >
+          B
+        </button>
+        <button
+          onClick={() => document.execCommand('italic')}
+          style={{
+            padding: '0.375rem 0.5rem',
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontStyle: 'italic'
+          }}
+        >
+          I
+        </button>
+        <button
+          onClick={() => document.execCommand('underline')}
+          style={{
+            padding: '0.375rem 0.5rem',
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            textDecoration: 'underline'
+          }}
+        >
+          U
+        </button>
       </div>
+
+      {/* ContentEditable Editor */}
+      <div
+        ref={editorRef}
+        contentEditable
+        style={{
+          flex: 1,
+          padding: '2rem',
+          backgroundColor: 'white',
+          border: 'none',
+          outline: 'none',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          fontFamily: 'Georgia, serif',
+          overflow: 'auto',
+          minHeight: '400px'
+        }}
+        onInput={(e) => {
+          if (onChange) {
+            onChange(e.currentTarget.innerHTML);
+          }
+        }}
+        onBlur={(e) => {
+          if (onChange) {
+            onChange(e.currentTarget.innerHTML);
+          }
+        }}
+        suppressContentEditableWarning={true}
+      />
+
+      <style dangerouslySetInnerHTML={{ __html: generateStyleCSS() }} />
     </div>
   );
 };
