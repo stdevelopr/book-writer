@@ -3,18 +3,38 @@ import MonacoEditor from '@monaco-editor/react';
 import WysiwygEditor from './WysiwygEditor';
 import Input from './Input';
 
-const Editor = ({ chapter, onTitleChange, onContentChange, styles }) => {
-  const [isPreview, setIsPreview] = useState(false);
-  const [viewMode, setViewMode] = useState('wysiwyg'); // 'wysiwyg' or 'html'
+interface Chapter {
+  id: number;
+  title: string;
+  content: string;
+}
+
+interface BookStyles {
+  [key: string]: {
+    name: string;
+    css: string;
+    preview: string;
+  };
+}
+
+interface EditorProps {
+  chapter?: Chapter;
+  onTitleChange: (title: string) => void;
+  onContentChange: (content: string) => void;
+  styles: BookStyles;
+}
+
+const Editor = ({ chapter, onTitleChange, onContentChange, styles }: EditorProps) => {
+  const [isPreview, setIsPreview] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const wordCount = chapter?.content.replace(/<[^>]*>/g, '').split(/\s+/).filter(word => word.length > 0).length || 0;
   
-  const generateStyleCSS = () => {
+  const generateStyleCSS = (): string => {
     if (!styles) return '';
     return Object.entries(styles)
       .map(([className, style]) => `.${className} { ${style.css} }`)
       .join('\n');
   };
-
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden">

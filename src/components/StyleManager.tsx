@@ -1,12 +1,28 @@
 import { useState, useEffect } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 
-const StyleManager = ({ styles, onStylesChange, onClose }) => {
-  const [selectedElement, setSelectedElement] = useState('chapter-title');
-  const [isPreview, setIsPreview] = useState(false);
+interface BookStyle {
+  name: string;
+  css: string;
+  preview: string;
+}
+
+interface BookStyles {
+  [key: string]: BookStyle;
+}
+
+interface StyleManagerProps {
+  styles: BookStyles;
+  onStylesChange: (styles: BookStyles) => void;
+  onClose: () => void;
+}
+
+const StyleManager = ({ styles, onStylesChange, onClose }: StyleManagerProps) => {
+  const [selectedElement, setSelectedElement] = useState<string>('chapter-title');
+  const [isPreview, setIsPreview] = useState<boolean>(false);
 
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         onClose();
       }
@@ -16,7 +32,7 @@ const StyleManager = ({ styles, onStylesChange, onClose }) => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  const defaultStyles = {
+  const defaultStyles: BookStyles = {
     'chapter-title': {
       name: 'Chapter Title',
       css: `font-size: 2.5rem;
@@ -90,7 +106,7 @@ border-radius: 0 8px 8px 0;`,
 
   const currentStyles = { ...defaultStyles, ...styles };
   
-  const updateStyle = (element, newCSS) => {
+  const updateStyle = (element: string, newCSS: string): void => {
     const updatedStyles = {
       ...styles,
       [element]: {
@@ -101,12 +117,12 @@ border-radius: 0 8px 8px 0;`,
     onStylesChange(updatedStyles);
   };
 
-  const resetToDefault = () => {
+  const resetToDefault = (): void => {
     const { [selectedElement]: removed, ...restStyles } = styles;
     onStylesChange(restStyles);
   };
 
-  const exportStyles = () => {
+  const exportStyles = (): void => {
     const cssContent = Object.entries(currentStyles)
       .map(([key, style]) => `.${key} {\n  ${style.css.split('\n').join('\n  ')}\n}`)
       .join('\n\n');
@@ -229,12 +245,12 @@ border-radius: 0 8px 8px 0;`,
                   }}
                   onMouseEnter={(e) => {
                     if (selectedElement !== key) {
-                      e.target.style.backgroundColor = '#f3f4f6';
+                      (e.target as HTMLButtonElement).style.backgroundColor = '#f3f4f6';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (selectedElement !== key) {
-                      e.target.style.backgroundColor = 'transparent';
+                      (e.target as HTMLButtonElement).style.backgroundColor = 'transparent';
                     }
                   }}
                 >

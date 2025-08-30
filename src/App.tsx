@@ -1,19 +1,39 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import StyleManager from './components/StyleManager'
 import './App.css'
 
+interface Chapter {
+  id: number;
+  title: string;
+  content: string;
+}
+
+interface BookStyles {
+  [key: string]: {
+    name: string;
+    css: string;
+    preview: string;
+  };
+}
+
+interface Book {
+  title: string;
+  chapters: Chapter[];
+  styles: BookStyles;
+}
+
 function App() {
-  const [book, setBook] = useState({
+  const [book, setBook] = useState<Book>({
     title: 'Untitled Book',
     chapters: [{ id: 1, title: 'Chapter 1', content: '<p>Start writing your book here...</p>' }],
     styles: {}
   })
-  const [currentChapter, setCurrentChapter] = useState(1)
-  const [lastSaved, setLastSaved] = useState(null)
-  const [showStyleManager, setShowStyleManager] = useState(false)
+  const [currentChapter, setCurrentChapter] = useState<number>(1)
+  const [lastSaved, setLastSaved] = useState<string | null>(null)
+  const [showStyleManager, setShowStyleManager] = useState<boolean>(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('bookData')
@@ -22,13 +42,13 @@ function App() {
     }
   }, [])
 
-  const saveBook = () => {
+  const saveBook = (): void => {
     localStorage.setItem('bookData', JSON.stringify(book))
     setLastSaved(new Date().toLocaleTimeString())
   }
 
-  const addChapter = () => {
-    const newChapter = {
+  const addChapter = (): void => {
+    const newChapter: Chapter = {
       id: Math.max(...book.chapters.map(c => c.id)) + 1,
       title: `Chapter ${book.chapters.length + 1}`,
       content: '<p>New chapter content...</p>'
@@ -37,7 +57,7 @@ function App() {
     setCurrentChapter(newChapter.id)
   }
 
-  const deleteChapter = (chapterId) => {
+  const deleteChapter = (chapterId: number): void => {
     if (book.chapters.length === 1) return
     const newChapters = book.chapters.filter(c => c.id !== chapterId)
     setBook({ ...book, chapters: newChapters })
@@ -46,21 +66,21 @@ function App() {
     }
   }
 
-  const updateChapterContent = (content) => {
+  const updateChapterContent = (content: string): void => {
     const updatedChapters = book.chapters.map(chapter =>
       chapter.id === currentChapter ? { ...chapter, content } : chapter
     )
     setBook({ ...book, chapters: updatedChapters })
   }
 
-  const updateChapterTitle = (title) => {
+  const updateChapterTitle = (title: string): void => {
     const updatedChapters = book.chapters.map(chapter =>
       chapter.id === currentChapter ? { ...chapter, title } : chapter
     )
     setBook({ ...book, chapters: updatedChapters })
   }
 
-  const exportBook = () => {
+  const exportBook = (): void => {
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -95,8 +115,8 @@ function App() {
     URL.revokeObjectURL(url)
   }
 
-  const generateCustomCSS = () => {
-    const defaultStyles = {
+  const generateCustomCSS = (): string => {
+    const defaultStyles: Record<string, string> = {
       'chapter-title': 'font-size: 2.5rem; font-weight: 700; color: #2c3e50; text-align: center; margin: 2rem 0;',
       'section-title': 'font-size: 1.8rem; font-weight: 600; color: #34495e; margin: 1.5rem 0 1rem 0;',
       'paragraph': 'font-size: 1rem; line-height: 1.7; color: #2c3e50; margin-bottom: 1.2rem;',
@@ -105,14 +125,16 @@ function App() {
       'quote': 'font-style: italic; border-left: 4px solid #ddd; padding-left: 2rem; margin: 2rem 0;'
     }
     
-    const customStyles = { ...defaultStyles, ...book.styles }
+    const customStyles = { ...defaultStyles, ...Object.fromEntries(
+      Object.entries(book.styles).map(([key, style]) => [key, style.css])
+    ) }
     
     return Object.entries(customStyles)
       .map(([className, css]) => `.${className} { ${css} }`)
       .join('\n        ')
   }
 
-  const exportPDF = () => {
+  const exportPDF = (): void => {
     // Create the complete HTML document for printing with custom styles
     const printHTML = `
 <!DOCTYPE html>
@@ -198,24 +220,26 @@ function App() {
     
     // Open the content in a new window and trigger print
     const printWindow = window.open('', '_blank', 'width=800,height=600')
-    printWindow.document.write(printHTML)
-    printWindow.document.close()
-    
-    // Wait for content to load, then print
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-      }, 1000)
+    if (printWindow) {
+      printWindow.document.write(printHTML)
+      printWindow.document.close()
+      
+      // Wait for content to load, then print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print()
+        }, 1000)
+      }
     }
   }
 
-  const getCurrentChapter = () => book.chapters.find(c => c.id === currentChapter)
+  const getCurrentChapter = (): Chapter | undefined => book.chapters.find(c => c.id === currentChapter)
 
   return (
     <div className="flex flex-col h-screen bg-white">
       <Header 
         bookTitle={book.title}
-        onTitleChange={(title) => setBook({ ...book, title })}
+        onTitleChange={(title: string) => setBook({ ...book, title })}
         onSave={saveBook}
         onExport={exportBook}
         onExportPDF={exportPDF}
@@ -246,7 +270,7 @@ function App() {
       {showStyleManager && (
         <StyleManager
           styles={book.styles}
-          onStylesChange={(newStyles) => setBook({ ...book, styles: newStyles })}
+          onStylesChange={(newStyles: BookStyles) => setBook({ ...book, styles: newStyles })}
           onClose={() => setShowStyleManager(false)}
         />
       )}

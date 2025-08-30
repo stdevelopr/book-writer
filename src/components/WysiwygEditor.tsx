@@ -1,9 +1,23 @@
 import { useRef, useEffect } from 'react';
 
-const WysiwygEditor = ({ content, onChange, styles }) => {
-  const editorRef = useRef(null);
+interface BookStyles {
+  [key: string]: {
+    name: string;
+    css: string;
+    preview: string;
+  };
+}
 
-  const generateStyleCSS = () => {
+interface WysiwygEditorProps {
+  content: string;
+  onChange: (content: string) => void;
+  styles?: BookStyles;
+}
+
+const WysiwygEditor = ({ content, onChange, styles }: WysiwygEditorProps) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  const generateStyleCSS = (): string => {
     // Simple test styles that work well with spans
     return `
       span.chapter-title {
@@ -33,9 +47,8 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
     `;
   };
 
-
   // Function to apply or toggle styles on selected text
-  const applyCustomStyle = (styleClass) => {
+  const applyCustomStyle = (styleClass: string): void => {
     console.log('Applying/toggling style:', styleClass);
     
     const editor = editorRef.current;
@@ -47,7 +60,7 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
     const selection = window.getSelection();
     
     // Check if we have a valid selection
-    if (selection.rangeCount === 0 || selection.isCollapsed) {
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
       alert('Please select some text first to apply the style.');
       return;
     }
@@ -63,19 +76,19 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
     try {
       // Check if the selection is entirely within a span with this style class
       const commonAncestor = range.commonAncestorContainer;
-      let parentSpan = null;
+      let parentSpan: HTMLElement | null = null;
       
       // If the common ancestor is a text node, get its parent
       const elementToCheck = commonAncestor.nodeType === Node.TEXT_NODE 
-        ? commonAncestor.parentElement 
-        : commonAncestor;
+        ? (commonAncestor.parentElement as HTMLElement)
+        : (commonAncestor as HTMLElement);
       
       // Check if we're inside a span with the target class
       if (elementToCheck && elementToCheck.tagName === 'SPAN' && elementToCheck.classList.contains(styleClass)) {
         parentSpan = elementToCheck;
       } else {
         // Check if the selection is entirely within a span with this class
-        let currentElement = elementToCheck;
+        let currentElement: HTMLElement | null = elementToCheck;
         while (currentElement && currentElement !== editor) {
           if (currentElement.tagName === 'SPAN' && currentElement.classList.contains(styleClass)) {
             parentSpan = currentElement;
@@ -89,18 +102,18 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
         // Remove the style - unwrap the span
         console.log('Removing style from span');
         const parent = parentSpan.parentNode;
-        
-        // Move all children of the span to replace the span
-        while (parentSpan.firstChild) {
-          parent.insertBefore(parentSpan.firstChild, parentSpan);
+        if (parent) {
+          // Move all children of the span to replace the span
+          while (parentSpan.firstChild) {
+            parent.insertBefore(parentSpan.firstChild, parentSpan);
+          }
+          
+          // Remove the empty span
+          parent.removeChild(parentSpan);
+          
+          // Normalize the parent to merge adjacent text nodes
+          parent.normalize();
         }
-        
-        // Remove the empty span
-        parent.removeChild(parentSpan);
-        
-        // Normalize the parent to merge adjacent text nodes
-        parent.normalize();
-        
       } else {
         // Apply the style - wrap in span
         console.log('Applying style to selection');
@@ -149,21 +162,21 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
       // Preserve cursor position if possible
       const selection = window.getSelection();
       const wasEditorFocused = document.activeElement === editor;
-      let range = null;
+      let range: Range | null = null;
       
-      if (wasEditorFocused && selection.rangeCount > 0) {
+      if (wasEditorFocused && selection && selection.rangeCount > 0) {
         range = selection.getRangeAt(0).cloneRange();
       }
       
       editor.innerHTML = content || '';
       
       // Restore cursor position if we had one
-      if (wasEditorFocused && range) {
+      if (wasEditorFocused && range && selection) {
         try {
           selection.removeAllRanges();
           selection.addRange(range);
           editor.focus();
-        } catch (error) {
+        } catch {
           // If restoring selection fails, just focus the editor
           editor.focus();
         }
@@ -173,7 +186,7 @@ const WysiwygEditor = ({ content, onChange, styles }) => {
 
   // Inject custom styles
   useEffect(() => {
-    const injectStyles = () => {
+    const injectStyles = (): void => {
       const styleId = 'wysiwyg-styles';
       let styleElement = document.getElementById(styleId);
       

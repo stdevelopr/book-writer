@@ -1,6 +1,20 @@
 import Button from './Button';
 
-const Sidebar = ({ chapters, currentChapter, onChapterSelect, onAddChapter, onDeleteChapter }) => {
+interface Chapter {
+  id: number;
+  title: string;
+  content: string;
+}
+
+interface SidebarProps {
+  chapters: Chapter[];
+  currentChapter: number;
+  onChapterSelect: (chapterId: number) => void;
+  onAddChapter: () => void;
+  onDeleteChapter: (chapterId: number) => void;
+}
+
+const Sidebar = ({ chapters, currentChapter, onChapterSelect, onAddChapter, onDeleteChapter }: SidebarProps) => {
   return (
     <aside className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
       <div className="p-4 border-b border-gray-200">
